@@ -112,7 +112,7 @@ export const Hero = () => {
                 transition={{ duration: 0.3 }}
             >
                 <motion.img
-                    src="src/assets/LOGO (2).png"
+                    src="src/assets/cdir-logo.png"
                     alt="Logo"
                     className="w-100 max-h-74 object-contain mb-6"
                 />
