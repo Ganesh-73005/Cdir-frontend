@@ -3,6 +3,7 @@ import { buttonVariants } from "./ui/button";
 import { motion } from "framer-motion";
 import { GitHubLogoIcon } from "@radix-ui/react-icons";
 import { Link } from "react-router-dom";
+import cdirLogo from "../assets/cdir-logo.png";
 
 export const Hero = () => {
     const containerVariants = {
@@ -112,10 +113,11 @@ export const Hero = () => {
                 transition={{ duration: 0.3 }}
             >
                 <motion.img
-                    src="src/assets/cdir-logo.png"
-                    alt="Logo"
-                    className="w-100 max-h-74 object-contain mb-6"
-                />
+    src={cdirLogo}
+    alt="CDirect Logo"
+    className="w-100 max-h-74 object-contain mb-6"
+/>
+
             </motion.div>
             <div className="shadow"></div>
         </section>
