@@ -99,15 +99,15 @@ const BuildingDetector: React.FC = () => {
     }
 
     useEffect(() => {
-        if (permissionStatus.camera === 'granted') {
-            startCamera()
-        }
+         if (permissionStatus.camera === 'granted') {
+        startCamera();
+    }
         if (permissionStatus.location === 'granted') {
             getUserLocation()
             const locationInterval = setInterval(getUserLocation, 5000)
             return () => clearInterval(locationInterval)
         }
-    }, [permissionStatus])
+    }, [permissionStatus.camera])
 
     useEffect(() => {
         startCamera()
@@ -117,17 +117,35 @@ const BuildingDetector: React.FC = () => {
     }, [])
 
     const startCamera = async () => {
-        try {
-            const stream = await navigator.mediaDevices.getUserMedia({ video: true });
-            if (videoRef.current) {
-                videoRef.current.srcObject = stream;
+    try {
+        const constraints = {
+            video: {
+                facingMode: { exact: "environment" } // This forces the rear camera
             }
-        } catch (err) {
-            console.error("Error accessing camera:", err);
-            alert("Unable to access the camera. Please ensure you have granted the necessary permissions.");
+        };
+        const stream = await navigator.mediaDevices.getUserMedia(constraints);
+        if (videoRef.current) {
+            videoRef.current.srcObject = stream;
         }
-    };
-
+    } catch (err) {
+        console.error("Try on mobile to use back camera", err);
+        
+        try {
+            const fallbackConstraints = {
+                video: {
+                    facingMode: "user" 
+                }
+            };
+            const fallbackStream = await navigator.mediaDevices.getUserMedia(fallbackConstraints);
+            if (videoRef.current) {
+                videoRef.current.srcObject = fallbackStream;
+            }
+        } catch (fallbackErr) {
+            console.error("Error accessing front camera:", fallbackErr);
+            alert("Unable to access any camera. Please ensure you have granted the necessary permissions.");
+        }
+    }
+};
     const getUserLocation = async () => {
         if (navigator.geolocation) {
             navigator.geolocation.watchPosition(
