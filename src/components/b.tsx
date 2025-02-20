@@ -61,7 +61,7 @@ const MapComponent: React.FC = () => {
 
     useEffect(() => {
         axios
-            .get<Building[]>("http://localhost:5000/buildings")
+            .get<Building[]>("https://building-manage.onrender.com/buildings")
             .then((response) => {
                 setBuildings(response.data);
             })
