@@ -1,10 +1,11 @@
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
-import { FaSignOutAlt, FaQrcode, FaDoorOpen } from "react-icons/fa";
+import { FaSignOutAlt, FaQrcode, FaMapMarkedAlt, FaBuilding, FaDoorOpen } from "react-icons/fa";
+import { MdOutlineNavigation } from "react-icons/md";
 import { Card, CardDescription, CardHeader, CardTitle } from "../../components/ui/card";
-import cdir from "../../assets/H11.png";
-import { Footer } from "../../components/Footer"
-
+import cdir from "../../assets/final.png";
+import { Footer } from "../../components/Footer";
+import ChatBot from "../../components/Chatbot"
 
 const serviceList = [
     {
@@ -22,14 +23,20 @@ const serviceList = [
     {
         title: "Indoor Navigation",
         description: "Find your way inside easily.",
-        icon: <FaDoorOpen size={24} />,
+        icon: <MdOutlineNavigation size={24} />,
         link: "/indoor",
     },
     {
         title: "Outdoor Navigation",
         description: "Fly like a bird.",
-        icon: <FaDoorOpen size={24} />,
+        icon: <FaMapMarkedAlt size={24} />,
         link: "/map",
+    },
+    {
+        title: "Building Details",
+        description: "Know open or close state.",
+        icon: <FaBuilding size={24} />,
+        link: "/b",
     }
 ];
 
@@ -96,7 +103,9 @@ const Home = () => {
                         />
                     </div>
                 </div>
+                <ChatBot/>
             </section>
+
             <Footer />
         </div>
 
