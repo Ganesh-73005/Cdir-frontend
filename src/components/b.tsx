@@ -53,73 +53,143 @@ const locations: Locations = {
     "Tag Auditorium": { coords: { lat: 13.011467678332918, lng: 80.23305767088478 }, color: "silver" }
 };
 
+
 const MapComponent: React.FC = () => {
-    const { isLoaded, loadError } = useLoadScript({
-        googleMapsApiKey: import.meta.env.VITE_GOOGLE_MAPS_API_KEY,
-    });
-    const [buildings, setBuildings] = useState<Building[]>([]);
+  const { isLoaded, loadError } = useLoadScript({
+    googleMapsApiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || "",
+  })
+  const [buildings, setBuildings] = useState<Building[]>([])
+  const [selectedBuilding, setSelectedBuilding] = useState<Building | null>(null)
+  const [buildingDetails, setBuildingDetails] = useState<any>(null)
+  const [isLoadingDetails, setIsLoadingDetails] = useState<boolean>(false)
+  const [error, setError] = useState<string | null>(null)
 
-    useEffect(() => {
-        axios
-            .get<Building[]>("https://building-manage.onrender.com/buildings")
-            .then((response) => {
-                setBuildings(response.data);
-            })
-            .catch((error) => {
-                console.error("There was an error fetching the buildings!", error);
-            });
-    }, []);
+  useEffect(() => {
+    axios
+      .get<Building[]>("https://building-manage.onrender.com/buildings")
+      .then((response) => {
+        setBuildings(response.data)
+      })
+      .catch((error) => {
+        console.error("There was an error fetching the buildings!", error)
+      })
+  }, [])
 
-    if (loadError) return <div className="text-red-500">Error loading maps</div>;
-    if (!isLoaded) return <div className="text-blue-500">Loading Maps...</div>;
+  const fetchBuildingDetails = async (buildingName: string) => {
+    setIsLoadingDetails(true)
+    setError(null)
+    try {
+      const response = await axios.get(`https://building-manage.onrender.com/buildings/${buildingName}`)
+      setBuildingDetails(response.data)
+    } catch (err) {
+      console.error("Error fetching building details:", err)
+      setError("Failed to fetch building details. Please try again.")
+    } finally {
+      setIsLoadingDetails(false)
+    }
+  }
 
-    return (
-        <div className="flex h-screen">
-            {/* Sidebar for Building Details */}
-            <div className="w-1/4 bg-gray-100 p-6 overflow-y-auto">
-                <h2 className="text-2xl font-bold mb-6 text-gray-800">Buildings</h2>
-                {buildings.map((building) => (
-                    <div
-                        key={building.name}
-                        className="bg-white p-4 rounded-lg shadow-md mb-4"
-                    >
-                        <h3 className="text-lg font-semibold text-gray-700">
-                            {building.name}
-                        </h3>
-                        <p
-                            className={`text-sm font-bold ${building.state === "open" ? "text-green-500" : "text-red-500"
-                                }`}
-                        >
-                            State: {building.state}
-                        </p>
-                    </div>
-                ))}
+  const handleMarkerInteraction = (building: Building) => {
+    setSelectedBuilding(building)
+    fetchBuildingDetails(building.name)
+  }
+
+  if (loadError) return <div className="text-red-500 p-4">Error loading maps</div>
+  if (!isLoaded) return <div className="text-blue-500 p-4">Loading Maps...</div>
+
+  return (
+    <div className="flex flex-col lg:flex-row h-screen">
+      {/* Sidebar for Building List */}
+      <div className="w-full lg:w-1/4 bg-gray-100 p-4 lg:p-6 overflow-y-auto">
+        <h2 className="text-2xl font-bold mb-6 text-gray-800">Buildings</h2>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-1 gap-4">
+          {buildings.map((building) => (
+            <div
+              key={building.name}
+              className="bg-white p-4 rounded-lg shadow-md cursor-pointer hover:bg-gray-50 transition duration-300 ease-in-out transform hover:-translate-y-1 hover:shadow-lg"
+              onClick={() => handleMarkerInteraction(building)}
+            >
+              <h3 className="text-lg font-semibold text-gray-700 mb-2">{building.name}</h3>
+              <p className={`text-sm font-bold ${building.state === "open" ? "text-green-500" : "text-red-500"}`}>
+                State: {building.state}
+              </p>
             </div>
-
-            {/* Google Map */}
-            <div className="flex-1">
-                <GoogleMap
-                    mapContainerStyle={mapContainerStyle}
-                    zoom={15}
-                    center={center}
-                >
-                    {buildings.map((building) => (
-                        <Marker
-                            key={building.name}
-                            position={locations[building.name].coords}
-                            icon={{
-                                path: google.maps.SymbolPath.CIRCLE,
-                                fillColor: building.state === "open" ? "green" : "red",
-                                fillOpacity: 1,
-                                strokeWeight: 0,
-                                scale: 10,
-                            }}
-                        />
-                    ))}
-                </GoogleMap>
-            </div>
+          ))}
         </div>
-    );
-};
+      </div>
 
-export default MapComponent;
+      {/* Google Map */}
+      <div className="flex-1 relative h-[400px] lg:h-auto">
+        <GoogleMap
+          mapContainerStyle={mapContainerStyle}
+          zoom={15}
+          center={center}
+          options={{
+            styles: [
+              {
+                featureType: "poi",
+                elementType: "labels",
+                stylers: [{ visibility: "off" }],
+              },
+            ],
+          }}
+        >
+          {buildings.map((building) => (
+            <Marker
+              key={building.name}
+              position={locations[building.name].coords}
+              icon={{
+                path: window.google.maps.SymbolPath.CIRCLE,
+                fillColor: building.state === "open" ? "#10B981" : "#EF4444",
+                fillOpacity: 1,
+                strokeWeight: 0,
+                scale: 10,
+              }}
+              onClick={() => handleMarkerInteraction(building)}
+            />
+          ))}
+
+          {/* InfoWindow to Show Building Details */}
+          {selectedBuilding && (
+            <InfoWindow
+              position={locations[selectedBuilding.name].coords}
+              onCloseClick={() => setSelectedBuilding(null)}
+            >
+              <div className="p-4 max-w-xs">
+                {isLoadingDetails ? (
+                  <p className="text-blue-500">Loading details...</p>
+                ) : error ? (
+                  <p className="text-red-500">{error}</p>
+                ) : (
+                  <>
+                    <h3 className="text-lg font-semibold text-gray-800 mb-2">{selectedBuilding.name}</h3>
+                    <p className="text-sm text-gray-600 mb-2">
+                      State:{" "}
+                      <span
+                        className={`font-bold ${selectedBuilding.state === "open" ? "text-green-500" : "text-red-500"}`}
+                      >
+                        {selectedBuilding.state}
+                      </span>
+                    </p>
+                    {buildingDetails && (
+                      <div className="mt-2">
+                        <p className="text-sm text-gray-600 mb-1">
+                          <strong>Capacity:</strong> {buildingDetails.capacity}
+                        </p>
+                        <p className="text-sm text-gray-600">
+                          <strong>Last Updated:</strong> {buildingDetails.lastUpdated}
+                        </p>
+                      </div>
+                    )}
+                  </>
+                )}
+              </div>
+            </InfoWindow>
+          )}
+        </GoogleMap>
+      </div>
+    </div>
+  )
+}
+
+export default MapComponent
