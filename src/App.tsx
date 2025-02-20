@@ -11,7 +11,7 @@ import  MapComponent from "./components/Indoor";
 import BuildingDetector from "./components/Services"
 import './index.css';
 import './App.css';
-
+import B_Detail from "./components/b"
 
 
 
@@ -47,7 +47,14 @@ function App() {
                        
                     }
                 />
-                
+                <Route
+                    path="/b"
+                    element={
+
+                        <B_Detail/>
+
+                    }
+                />
                 <Route
                     path="/indoor"
                     element={
