@@ -1,10 +1,10 @@
-﻿"use client"
+"use client"
 
 import type React from "react"
 import { useEffect, useState } from "react"
 import { Search, MapPin, ExternalLink, ChevronRight, Building2, Globe, Map } from "lucide-react"
 import { AnimatePresence, motion } from "framer-motion"
-import {Link } from "react-router-dom"
+import { Link } from "react-router-dom"
 import { ArrowLeft } from "lucide-react";
 
 
@@ -193,7 +193,7 @@ const MapComponent = () => {
         coords: { lat: number; lng: number }
         [key: string]: any
     }
-    
+
     const [selectedDepartment, setSelectedDepartment] = useState<string | null>(null)
     const [map, setMap] = useState<any>(null)
     const [indoorRenderer, setIndoorRenderer] = useState<any>(null)
@@ -213,10 +213,20 @@ const MapComponent = () => {
             zoom: 20,
         })
 
+        const getVenueId = (departmentKey: string | null) => {
+            if (departmentKey === "KP") {
+                return "2"; // KP department has venue ID 2
+            } else if (departmentKey === "IT") {
+                return "1"; // IT department retains its venue ID
+            } else {
+                return "1"; // Default venue ID for other departments
+            }
+        }
+
         const conf = {
             centerMap: false,
             defaultFloor: 0,
-            venue: "1",
+            venue: getVenueId(selectedDepartment), // Set venue ID based on selected department
             responsive: "desktop",
         }
 
@@ -231,8 +241,7 @@ const MapComponent = () => {
         setIndoorRenderer(newIndoorRenderer)
         setIsLoading(false)
 
-        
-    }, [])
+    }, [selectedDepartment]) // Re-run effect when selectedDepartment changes
 
     const handleSearch = (departmentKey: string) => {
         const department = departments[departmentKey as keyof typeof departments]
@@ -276,17 +285,18 @@ const MapComponent = () => {
     }
 
     return (
-        <div className="flex h-screen bg-gray-100">
-            <div className="p-4">
-                {/* Back Button */}
-               <Link to ="/home"> <button
-                   
-                    className="flex items-center gap-2 text-blue-600 hover:text-blue-800 mb-4"
-                >
-                    <ArrowLeft className="w-5 h-5" /> Back
-                </button> </Link></div>
+        <div className="flex flex-col md:flex-row h-screen bg-gray-100">
+            {/* Back Button */}
+            <div className="p-4 md:hidden">
+                <Link to="/home">
+                    <button className="flex items-center gap-2 text-blue-600 hover:text-blue-800 mb-4">
+                        <ArrowLeft className="w-5 h-5" /> Back
+                    </button>
+                </Link>
+            </div>
+
             {/* Sidebar */}
-            <div className="w-96 bg-white shadow-lg overflow-hidden flex flex-col">
+            <div className="w-full md:w-96 bg-white shadow-lg overflow-hidden flex flex-col">
                 {/* Search Header */}
                 <div className="p-4 border-b border-gray-200">
                     <h2 className="text-xl font-semibold text-gray-800 mb-4">Campus Navigator</h2>
@@ -404,7 +414,7 @@ const MapComponent = () => {
                 </div>
             </div>
         </div>
-    )
+    );
 }
 
 export default MapComponent
