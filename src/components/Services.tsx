@@ -479,7 +479,7 @@ const BuildingDetector: React.FC = () => {
                 Name: "Red Building",
                 "Phone no.": "+91 044 - 22358561",
                 "Email ID": "annauniv.edu",
-                Dean: "Prof.Swamynathan",
+               
                 coords: { lat: 13.01069, lng: 80.235408 },
             },
             Unknown: {
