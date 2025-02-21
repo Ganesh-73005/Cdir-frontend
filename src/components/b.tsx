@@ -1,18 +1,22 @@
-import type React from "react"
-import { useEffect, useState } from "react"
-import { GoogleMap, Marker, useLoadScript, InfoWindow } from "@react-google-maps/api"
+import React, { useEffect, useState } from "react"
+import { GoogleMap, Marker, useLoadScript, InfoWindow, DirectionsRenderer } from "@react-google-maps/api"
+import { motion, AnimatePresence } from "framer-motion"
 import axios from "axios"
+import { cn } from "@/lib/utils"
 import type { Building, Locations } from "./types1"
-import { Card, CardContent } from "@/components/ui/card"
+import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card"
+import { Button } from "@/components/ui/button"
+import { AlertCircle, Navigation, Loader2 } from "lucide-react"
+
 const mapContainerStyle = {
     width: "100%",
     height: "600px",
-};
+}
 
 const center = {
     lat: 13.010813,
     lng: 80.235371,
-};
+}
 
 const locations: Locations = {
     "Main Gate": { coords: { lat: 13.008305, lng: 80.235070 }, color: "red" },
@@ -53,111 +57,220 @@ const locations: Locations = {
     "Manufacturing Engineering": { coords: { lat: 13.012060617139763, lng: 80.23450949264334 }, color: "purple" },
     "Tag Auditorium": { coords: { lat: 13.011467678332918, lng: 80.23305767088478 }, color: "silver" }
 };
-declare global {
-  interface Window {
-    google: any
-  }
-}
-
 const MapComponent: React.FC = () => {
-  const { isLoaded, loadError } = useLoadScript({
-    googleMapsApiKey: import.meta.env.VITE_GOOGLE_MAPS_API_KEY,
-  })
-  const [buildings, setBuildings] = useState<Building[]>([])
-  const [selectedBuilding, setSelectedBuilding] = useState<Building | null>(null)
+    const [theme, setTheme] = useState("light")
+    const [selectedBuilding, setSelectedBuilding] = useState<Building | null>(null)
+    const [buildings, setBuildings] = useState<Building[]>([])
+    const [mapError, setMapError] = useState<string | null>(null)
+    const [directions, setDirections] = useState<google.maps.DirectionsResult | null>(null)
+    const [userLocation, setUserLocation] = useState<google.maps.LatLngLiteral | null>(null)
 
-  useEffect(() => {
-    axios
-      .get<Building[]>("https://building-manage.onrender.com/buildings")
-      .then((response) => {
-        setBuildings(response.data)
-      })
-      .catch((error) => {
-        console.error("There was an error fetching the buildings!", error)
-      })
-  }, [])
+    const { isLoaded, loadError } = useLoadScript({
+        googleMapsApiKey: import.meta.env.VITE_GOOGLE_MAPS_API_KEY,
+    })
 
-  if (loadError) return <div className="text-red-500">Error loading maps</div>
-  if (!isLoaded) return <div className="text-blue-500">Loading Maps...</div>
+    useEffect(() => {
+        // Fetch buildings data
+        axios.get<Building[]>("https://building-manage.onrender.com/buildings")
+            .then((response) => {
+                setBuildings(response.data)
+            })
+            .catch((error) => {
+                console.error("Error fetching buildings:", error)
+            })
 
-  return (
-    <div className="flex flex-col md:flex-row h-screen">
-      {/* Sidebar for Building List */}
-      <Card className="w-full md:w-1/4 bg-gray-100 overflow-y-auto">
-        <CardContent>
-          <h2 className="text-2xl font-bold mb-6 text-gray-800">Buildings</h2>
-          {buildings.map((building) => (
-            <Card
-              key={building.name}
-              className="mb-4 cursor-pointer hover:bg-gray-50"
-              onClick={() => setSelectedBuilding(building)}
+        // Get user location
+        if (navigator.geolocation) {
+            navigator.geolocation.getCurrentPosition(
+                (position) => {
+                    setUserLocation({
+                        lat: position.coords.latitude,
+                        lng: position.coords.longitude,
+                    })
+                },
+                (error) => {
+                    console.error("Error getting location:", error)
+                }
+            )
+        }
+    }, [])
+
+    const handleBuildingSelection = async (building: Building) => {
+        setSelectedBuilding(building)
+        if (userLocation && building.name && locations[building.name]) {
+            const directionsService = new google.maps.DirectionsService()
+            try {
+                const result = await directionsService.route({
+                    origin: userLocation,
+                    destination: locations[building.name].coords,
+                    travelMode: google.maps.TravelMode.WALKING,
+                })
+                setDirections(result)
+            } catch (error) {
+                console.error("Error getting directions:", error)
+            }
+        }
+    }
+
+    if (loadError) return (
+        <Card className="m-4">
+            <CardContent>
+                <div className="text-red-500">Error loading maps</div>
+            </CardContent>
+        </Card>
+    )
+    
+    if (!isLoaded) return (
+        <Card className="m-4">
+            <CardContent>
+                <Loader2 className="h-8 w-8 animate-spin text-primary" />
+            </CardContent>
+        </Card>
+    )
+
+    return (
+        <div className={cn("min-h-screen p-5 flex flex-col items-center overflow-hidden font-sans",
+            theme === "dark" ? "bg-gray-900 text-white" : "bg-white text-gray-800")}>
+            
+            <motion.h1
+                initial={{ opacity: 0, y: -50 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 1 }}
+                className="text-center mb-6 text-4xl font-bold text-primary"
             >
-              <CardContent>
-                <h3 className="text-lg font-semibold text-gray-700">{building.name}</h3>
-                <p className={`text-sm font-bold ${building.state === "open" ? "text-green-500" : "text-red-500"}`}>
-                  State: {building.state}
-                </p>
-              </CardContent>
-            </Card>
-          ))}
-        </CardContent>
-      </Card>
+                Campus Navigator
+            </motion.h1>
 
-      {/* Google Map */}
-      <Card className="flex-1 relative">
-        <CardContent className="p-0 h-[400px] md:h-full">
-          <GoogleMap mapContainerStyle={mapContainerStyle} zoom={15} center={center}>
-            {buildings.map((building) => (
-              <Marker
-                key={building.name}
-                position={locations[building.name].coords}
-                icon={{
-                  path: window.google.maps.SymbolPath.CIRCLE,
-                  fillColor: building.state === "open" ? "green" : "red",
-                  fillOpacity: 1,
-                  strokeWeight: 0,
-                  scale: 10,
-                }}
-                onClick={() => setSelectedBuilding(building)}
-              />
-            ))}
+            <div className="flex w-full max-w-7xl gap-5 flex-wrap justify-center">
+                {/* Buildings List Card */}
+                <Card className="w-full max-w-xl shadow-lg">
+                    <CardHeader>
+                        <CardTitle className="text-primary">Buildings</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                        <motion.ul className="space-y-3">
+                            {buildings.map((building, index) => (
+                                <motion.li
+                                    key={building.name}
+                                    initial={{ opacity: 0, x: -50 }}
+                                    animate={{ opacity: 1, x: 0 }}
+                                    transition={{ duration: 0.5, delay: index * 0.1 }}
+                                    className="border-2 border-primary/20 p-3 rounded-md"
+                                    whileHover={{ scale: 1.02 }}
+                                >
+                                    <div>
+                                        <strong className="text-lg text-primary">{building.name}</strong>
+                                        <div className="mt-2 grid grid-cols-1 md:grid-cols-2 gap-2">
+                                            <Button
+                                                variant="outline"
+                                                className="flex justify-between w-full p-2 text-sm items-center truncate border-primary/20"
+                                            >
+                                                <strong className="truncate text-primary/80">Status:</strong>
+                                                <span className={cn(
+                                                    "truncate max-w-[60%] text-ellipsis overflow-hidden",
+                                                    building.state === "open" ? "text-green-500" : "text-red-500"
+                                                )}>
+                                                    {building.state}
+                                                </span>
+                                            </Button>
+                                            {building.capacity && (
+                                                <Button
+                                                    variant="outline"
+                                                    className="flex justify-between w-full p-2 text-sm items-center truncate border-primary/20"
+                                                >
+                                                    <strong className="truncate text-primary/80">Capacity:</strong>
+                                                    <span className="truncate max-w-[60%]">{building.capacity}</span>
+                                                </Button>
+                                            )}
+                                        </div>
+                                        <Button
+                                            onClick={() => handleBuildingSelection(building)}
+                                            className="mt-3 w-full bg-primary hover:bg-primary/90"
+                                        >
+                                            <Navigation className="mr-2 h-4 w-4" />
+                                            Show Route
+                                        </Button>
+                                    </div>
+                                </motion.li>
+                            ))}
+                        </motion.ul>
+                    </CardContent>
+                </Card>
 
-            {/* InfoWindow to Show Building Details */}
-            {selectedBuilding && (
-              <InfoWindow
-                position={locations[selectedBuilding.name].coords}
-                onCloseClick={() => setSelectedBuilding(null)}
-              >
-                <div className="p-2">
-                  <h3 className="text-lg font-semibold text-gray-800">{selectedBuilding.name}</h3>
-                  <p className="text-sm text-gray-600">
-                    State:{" "}
-                    <span
-                      className={`font-bold ${selectedBuilding.state === "open" ? "text-green-500" : "text-red-500"}`}
-                    >
-                      {selectedBuilding.state}
-                    </span>
-                  </p>
-                  {selectedBuilding.capacity && (
-                    <p className="text-sm text-gray-600">
-                      <strong>Capacity:</strong> {selectedBuilding.capacity}
-                    </p>
-                  )}
-                  {selectedBuilding.lastUpdated && (
-                    <p className="text-sm text-gray-600">
-                      <strong>Last Updated:</strong> {selectedBuilding.lastUpdated}
-                    </p>
-                  )}
-                </div>
-              </InfoWindow>
-            )}
-          </GoogleMap>
-        </CardContent>
-      </Card>
-    </div>
-  )
+                {/* Map Card */}
+                <Card className="w-full max-w-2xl h-[600px] overflow-hidden shadow-lg">
+                    <CardContent className="p-0 h-full">
+                        <GoogleMap
+                            mapContainerStyle={{ height: "100%", width: "100%" }}
+                            zoom={15}
+                            center={userLocation || center}
+                            onLoad={() => setMapError(null)}
+                            onError={() => setMapError("Error loading map")}
+                            options={{
+                                styles: theme === "dark" ? [
+                                    { elementType: "geometry", stylers: [{ color: "#242f3e" }] },
+                                    { elementType: "labels.text.stroke", stylers: [{ color: "#242f3e" }] },
+                                    { elementType: "labels.text.fill", stylers: [{ color: "#746855" }] },
+                                ] : [],
+                            }}
+                        >
+                            {userLocation && (
+                                <Marker
+                                    position={userLocation}
+                                    icon={{
+                                        path: google.maps.SymbolPath.CIRCLE,
+                                        fillColor: "#4285F4",
+                                        fillOpacity: 1,
+                                        strokeWeight: 0,
+                                        scale: 8,
+                                    }}
+                                />
+                            )}
+                            
+                            {buildings.map((building) => (
+                                <Marker
+                                    key={building.name}
+                                    position={locations[building.name].coords}
+                                    icon={{
+                                        path: google.maps.SymbolPath.CIRCLE,
+                                        fillColor: building.state === "open" ? "#34D399" : "#EF4444",
+                                        fillOpacity: 1,
+                                        strokeWeight: 0,
+                                        scale: 10,
+                                    }}
+                                    onClick={() => handleBuildingSelection(building)}
+                                />
+                            ))}
+
+                            {selectedBuilding && locations[selectedBuilding.name] && (
+                                <InfoWindow
+                                    position={locations[selectedBuilding.name].coords}
+                                    onCloseClick={() => setSelectedBuilding(null)}
+                                >
+                                    <div className="p-2">
+                                        <h3 className="text-lg font-semibold text-gray-800">{selectedBuilding.name}</h3>
+                                        <p className={cn(
+                                            "text-sm font-bold",
+                                            selectedBuilding.state === "open" ? "text-green-500" : "text-red-500"
+                                        )}>
+                                            {selectedBuilding.state}
+                                        </p>
+                                        {selectedBuilding.capacity && (
+                                            <p className="text-sm text-gray-600">
+                                                Capacity: {selectedBuilding.capacity}
+                                            </p>
+                                        )}
+                                    </div>
+                                </InfoWindow>
+                            )}
+
+                            {directions && <DirectionsRenderer directions={directions} />}
+                        </GoogleMap>
+                    </CardContent>
+                </Card>
+            </div>
+        </div>
+    )
 }
 
-
-
-export default MapComponent;
+export default MapComponent
